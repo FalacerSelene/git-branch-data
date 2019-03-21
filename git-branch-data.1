@@ -1,0 +1,122 @@
+.\"***************************************************************************
+.\"
+.\"        FILE: git-branch-data.1
+.\"
+.\" DESCRIPTION: Manual page for git-branch-data.
+.\"
+.\"     VERSION: 1.2.0
+.\"
+.\"***************************************************************************
+
+.TH GIT-BRANCH-DATA 1 "Thursday 21st March 2019" "version 1.2.0" "GIT EXTENSIONS"
+
+.\" NAME {{{
+.SH NAME
+
+git-branch-data - display most recent commit data for a set of branches.
+
+.\" }}}
+
+.\" SYNOPSIS {{{
+.SH SYNOPSIS
+
+\fIgit branch-data\fR [\-ahmtuv] [\-b <branchname>]
+
+.\" }}}
+
+.\" DESCRIPTION {{{
+.SH DESCRIPTION
+
+git\-branch\-data extends git to make it easy to determine the status of each
+of the branches in the remote repository. It prints data for each branch
+present on each remote in the form:
+
+    BRANCH_NAME|AUTHOR_NAME|AUTHOR_EMAIL|LAST_COMMIT_DATE|LAST_COMMIT
+
+By default, this information is printed for every branch which has not yet
+been merged to the master branch. This allows the user to tell which feature
+branches are under active development.
+
+Using the \-\-merged\-only option (see below), it is also possible to get a
+list of branches which \fIhave\fR been fully merged to master, and are
+therefore safe to delete from the remote.
+
+.\" }}}
+
+.\" OPTIONS {{{
+.SH OPTIONS
+
+.\" --all-branches {{{
+.PP
+\-a, \-\-all, \-\-all\-branches
+.RS 4
+Return data about all branches, not just those not yet merged to master.
+.RE
+.\" }}}
+
+.\" --relative-branch {{{
+.PP
+\-b, \-\-branch, \-\-relative\-branch <branch>
+.RS 4
+Return data from branches not merged (only merged with \-m) to <branch>,
+instead of master.
+.RE
+.\" }}}
+
+.\" --help {{{
+.PP
+\-h, \-\-help
+.RS 4
+Print some help text and terminate.
+.RE
+.\" }}}
+
+.\" --merged-only {{{
+.PP
+\-m, \-\-merged, \-\-merged\-only
+.RS 4
+Return data for branches which are fully merged, rather than for unmerged
+branches.
+.RE
+.\" }}}
+
+.\" --tab {{{
+.PP
+\-t, \-\-tab
+.RS 4
+Replace the '|'s in the output data with tab characters. Useful when piping
+the data into \fBcut\fR(1) or \fBawk\fR(1).
+.RE
+.\" }}}
+
+.\" --unmerged-only {{{
+.PP
+\-u, \-\-unmerged, \-\-unmerged\-only
+.RS 4
+Return only data for branches that have not yet been fully merged. The
+default.
+.RE
+.\" }}}
+
+.\" --version {{{
+.PP
+\-v, \-\-version
+.RS 4
+Print the program version number and terminate.
+.RE
+.\" }}}
+
+.\" }}}
+
+.\" EXAMPLES {{{
+.SH EXAMPLES
+.RS 4
+TODO: write me!
+.RE
+.\" }}}
+
+.\" SEE ALSO {{{
+.SH SEE ALSO
+\fBgit-branch\fR(1)
+\fBgit-log\fR(1)
+.\" }}}

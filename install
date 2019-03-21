@@ -1,0 +1,18 @@
+#! /usr/bin/env bash
+
+declare install_prefix="${1:-/usr/local}"
+
+if ! [[ -e "${install_prefix}"/bin ]] ; then
+	mkdir -p "${install_prefix}"/bin
+fi
+
+if ! [[ -e "${install_prefix}"/share/man/man1 ]] ; then
+	mkdir -p "${install_prefix}"/share/man/man1
+fi
+
+cp git-branch-data "${install_prefix}"/bin
+chmod +x "${install_prefix}"/bin/git-branch-data
+
+cp git-branch-data.1 "${install_prefix}"/share/man/man1
+gzip "${install_prefix}"/share/man/man1/git-branch-data.1
+
