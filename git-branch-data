@@ -9,18 +9,18 @@
 #                                                                            #
 ##############################################################################
 
-declare version='1.2.0'
+declare VERSION='1.2.0'
 
-declare usage
-read -d '' usage <<EOF
+declare USAGE
+read -d '' USAGE <<EOF
 Usage: git-branch-data [-ahmtuv] [-b <branchname>]
 EOF
 
-declare helptext
-read -d '' helptext <<EOH
-${usage}
+declare HELPTEXT
+read -d '' HELPTEXT <<EOH
+${USAGE}
 
-Version: ${version}
+Version: ${VERSION}
 
 Print data about each git branch present on the remote which has not yet been
 fully merged to master.
@@ -55,33 +55,25 @@ Options:
 
 EOH
 
-# If we're not in a git directory there's no point in doing anything
-if ! git rev-parse --is-inside-work-tree &>/dev/null ; then
-    echo "Aborting - not in git working copy!" >&2
-    exit 1
-fi
-
 # Command line options
-declare lastarg=''
-declare relbranch='master'
-declare mergearg='--no-merged'
-declare sep='|'
-declare -i gotbranchtypearg=0
+declare RELBRANCH='master'
+declare MERGEARG='--no-merged'
+declare SEP='|'
 
-# getbranchlogs {{{
+# branchnametolog () {{{
 #
 # Read the log for a given list of branch names on STDIN.
 # Output logs to STDOUT.
-getbranchlogs () {
+branchnametolog () {
     while read ; do
         declare fullname="${REPLY}"
         declare partname="$(echo "${REPLY}"                   |
                             sed --expression='s/ *origin\///' )"
         declare logline="$(git log                                    \
-                             --pretty="%an${sep}%ae${sep}%ad${sep}%s" \
+                             --pretty="%an${SEP}%ae${SEP}%ad${SEP}%s" \
                              "${fullname}"                            |
                            head --lines=1                             )"
-        echo "${partname}${sep}${logline}"
+        echo "${partname}${SEP}${logline}"
     done
 }
 # }}}
@@ -98,115 +90,150 @@ shouldsplitarg () {
 }
 # }}}
 
-# Split single argument with many options into multiple arguments {{{
-declare -a args=()
-for arg in "$@" ; do
-    if shouldsplitarg "${arg}" ; then
-        declare -i arglen="${#arg}"
-        declare -i ii
-        for (( ii = 1; ii < arglen; ii++ )) ; do
-            args[${#args[@]}]="-${arg:${ii}:1}"
-        done
-    else
-        args[${#args[@]}]="${arg}"
+# parseargs () {{{
+#
+# Parse the command line args.
+parseargs () {
+    # Split the args if they are shortopts.
+    declare -a args=()
+    for arg in "$@" ; do
+        if shouldsplitarg "${arg}" ; then
+            declare -i arglen="${#arg}"
+            declare -i ii
+            for (( ii = 1; ii < arglen; ii++ )) ; do
+                args[${#args[@]}]="-${arg:${ii}:1}"
+            done
+        else
+            args[${#args[@]}]="${arg}"
+        fi
+    done
+
+    # State machine states
+    declare -i state_norm=0
+    declare -i state_relative_branch=1
+    declare -i state="${state_norm}"
+
+    # Other tracking info
+    declare lastarg=''
+    declare -i gotbranchtypearg=0
+
+    # Begin state machine across the args.
+    for arg in "${args[@]}" ; do
+        case "${state}" in
+            ${state_norm})
+                case "${arg}" in
+                    --all-branches|--all|-a)
+                        MERGEARG=''
+                        if (( gotbranchtypearg )) ; then
+                            echo "Got too many a/m/u args! Only 1 is permitted." >&2
+                            return 1
+                        fi
+                        (( gotbranchtypearg++ ))
+                        ;;
+                    --relative-branch|--branch|-b)
+                        (( state = state_relative_branch ))
+                        ;;
+                    --help|-h)
+                        echo "${HELPTEXT}"
+                        return 2
+                        ;;
+                    --merged-only|--merged|-m)
+                        MERGEARG='--merged'
+                        if (( gotbranchtypearg )) ; then
+                            echo "Got too many a/m/u args! Only 1 is permitted." >&2
+                            return 1
+                        fi
+                        (( gotbranchtypearg++ ))
+                        ;;
+                    --tab|-t)
+                        SEP=$'\t'
+                        ;;
+                    --unmerged-only|--unmerged|-u)
+                        MERGEARG='--no-merged'
+                        if (( gotbranchtypearg )) ; then
+                            echo "Got too many a/m/u args! Only 1 is permitted." >&2
+                            return 1
+                        fi
+                        (( gotbranchtypearg++ ))
+                        ;;
+                    --version|-v)
+                        echo "${VERSION}"
+                        return 2
+                        ;;
+                    *)
+                        echo "Unknown argument ${arg}!" >&2
+                        echo "${USAGE}" >&2
+                        return 1
+                        ;;
+                esac
+                ;;
+            ${state_relative_branch})
+                RELBRANCH="${arg}"
+                (( state = state_norm ))
+                ;;
+            *)
+                echo "Programming error! State ${state}" >&2
+                return 1
+                ;;
+        esac
+        # Remember last arg
+        lastarg="${arg}"
+    done
+
+    # Validate end of parsing
+    if (( state != state_norm )) ; then
+        # We should have returned to normal state at the end. If we didn't, then
+        # something went wrong. This is why we need to remember the last argument
+        # we saw.
+        echo "Missing mandatory argument for option ${lastarg}!" >&2
+        echo "${USAGE}" >&2
+        return 1
     fi
-done
+
+    return 0
+}
 # }}}
 
-# Parse arguments {{{
-
-# State machine states
-declare -i state_norm=0
-declare -i state_relative_branch=1
-declare -i state="${state_norm}"
-
-for arg in "${args[@]}" ; do
-    case "${state}" in
-        ${state_norm})
-            case "${arg}" in
-                --all-branches|--all|-a)
-                    mergearg=''
-                    if (( gotbranchtypearg )) ; then
-                        echo "Got too many a/m/u args! Only 1 is permitted." >&2
-                        exit 1
-                    fi
-                    (( gotbranchtypearg++ ))
-                    ;;
-                --relative-branch|--branch|-b)
-                    (( state = state_relative_branch ))
-                    ;;
-                --help|-h)
-                    echo "${helptext}"
-                    exit 0
-                    ;;
-                --merged-only|--merged|-m)
-                    mergearg='--merged'
-                    if (( gotbranchtypearg )) ; then
-                        echo "Got too many a/m/u args! Only 1 is permitted." >&2
-                        exit 1
-                    fi
-                    (( gotbranchtypearg++ ))
-                    ;;
-                --tab|-t)
-                    sep=$'\t'
-                    ;;
-                --unmerged-only|--unmerged|-u)
-                    mergearg='--no-merged'
-                    if (( gotbranchtypearg )) ; then
-                        echo "Got too many a/m/u args! Only 1 is permitted." >&2
-                        exit 1
-                    fi
-                    (( gotbranchtypearg++ ))
-                    ;;
-                --version|-v)
-                    echo "${version}"
-                    exit 0
-                    ;;
-                *)
-                    echo "Unknown argument ${arg}!" >&2
-                    echo "${usage}" >&2
-                    exit 1
-                    ;;
-            esac
-            ;;
-        ${state_relative_branch})
-            relbranch="${arg}"
-            (( state = state_norm ))
-            ;;
-        *)
-            echo "Programming error! State ${state}" >&2
-            exit 1
-            ;;
-    esac
-    # Remember last arg
-    lastarg="${arg}"
-done
-# }}}
-
-# Validate end of parsing {{{
-if (( state != state_norm )) ; then
-    # We should have returned to normal state at the end. If we didn't, then
-    # something went wrong. This is why we need to remember the last argument
-    # we saw.
-    echo "Missing mandatory argument for option ${lastarg}!" >&2
-    echo "${usage}" >&2
-    exit 1
-fi
-# }}}
-
-# Main function
-{
-    if [[ -z "${mergearg}" ]] ; then
+# getbranchnames () {{{
+#
+# Based on the CLI args, get the branch names we care about.
+getbranchnames () {
+    if [[ -z "${MERGEARG}" ]] ; then
         # We don't care if the branches are already fully merged, show them
-        # anyway. In this case relbranch means nothing, so ignore it.
+        # anyway. In this case RELBRANCH means nothing, so ignore it.
         git branch --remotes
     else
-        git branch --remotes "${mergearg}" "${relbranch}" |
-        sed --expression='/origin\/'"${relbranch}"'$/d'   ;
+        git branch --remotes "${MERGEARG}" "${RELBRANCH}" |
+        sed --expression='/origin\/'"${RELBRANCH}"'$/d'   ;
     fi
-}                                  |
-sed --expression='/origin\/HEAD/d' | # Remove HEAD reference
-sed --expression='s/^ *//'         | # Strip leading spaces
-getbranchlogs                      ;
+}
+# }}}
+
+# isgit () {{{
+#
+# Check if this dir is a git directory
+isgit () {
+    if git rev-parse --is-inside-work-tree &>/dev/null ; then
+        return 0
+    else
+        echo "Aborting - not in git working copy!" >&2
+        return 1
+    fi
+}
+# }}}
+
+# MAIN
+
+if ! git rev-parse --is-inside-work-tree &>/dev/null ; then
+    echo "Aborting - not in git working copy!" >&2
+    exit 1
+fi
+
+isgit                              &&
+parseargs "$@"                     &&
+getbranchnames                      |
+sed --expression='/origin\/HEAD/d'  | # Remove HEAD reference
+sed --expression='s/^ *//'          | # Strip leading spaces
+branchnametolog                     ;
 
 # Vim: set et sw=4 ts=4 sts=4 fdm=marker fmr={{{,}}} ai si pi ci :
