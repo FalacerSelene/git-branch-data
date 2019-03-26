@@ -222,18 +222,29 @@ isgit () {
 }
 # }}}
 
+# normalise () {{{
+#
+#
+normalise () {
+    declare trimrelative=''
+    if [[ -n "${MERGEARG}" ]] ; then
+        trimrelative="/origin\\/${RELBRANCH}$/d"
+    fi
+
+    sed "
+        ${trimrelative}
+        /origin\\/HEAD/d
+        s/^ *//g
+    "
+}
+# }}}
+
 # MAIN
 
-if ! git rev-parse --is-inside-work-tree &>/dev/null ; then
-    echo "Aborting - not in git working copy!" >&2
-    exit 1
-fi
-
-isgit                              &&
-parseargs "$@"                     &&
-getbranchnames                      |
-sed --expression='/origin\/HEAD/d'  | # Remove HEAD reference
-sed --expression='s/^ *//'          | # Strip leading spaces
-branchnametolog                     ;
+isgit           &&
+parseargs "$@"  &&
+getbranchnames   |
+normalise        |
+branchnametolog  ;
 
 # Vim: set et sw=4 ts=4 sts=4 fdm=marker fmr={{{,}}} ai si pi ci :
