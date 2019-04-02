@@ -1,18 +1,39 @@
 #! /usr/bin/env bash
 
-declare install_prefix="${1:-/usr/local}"
+declare choice
 
-if ! [[ -e "${install_prefix}"/bin ]] ; then
-	mkdir -p "${install_prefix}"/bin
+if [[ -z "${PREFIX}" ]] ; then
+	echo 'PREFIX not set. Do you wish to continue with PREFIX=/usr/local?'
+	select choice in yes no ; do
+		case "${choice}" in
+			y|yes)
+				PREFIX='/usr/local'
+				break
+				;;
+			n|no)
+				echo 'Aborting installation.'
+				exit 1
+				;;
+			*)
+				echo 'Please select a numbered option.'
+				;;
+		esac
+	done
 fi
 
-if ! [[ -e "${install_prefix}"/share/man/man1 ]] ; then
-	mkdir -p "${install_prefix}"/share/man/man1
+if ! [[ -e "${PREFIX}"/bin ]] ; then
+	mkdir -p "${PREFIX}"/bin
 fi
 
-cp git-branch-data "${install_prefix}"/bin
-chmod +x "${install_prefix}"/bin/git-branch-data
+if ! [[ -e "${PREFIX}"/share/man/man1 ]] ; then
+	mkdir -p "${PREFIX}"/share/man/man1
+fi
 
-cp git-branch-data.1 "${install_prefix}"/share/man/man1
-gzip "${install_prefix}"/share/man/man1/git-branch-data.1
+cp git-branch-data "${PREFIX}"/bin/git-branch-data
+chmod +x "${PREFIX}"/bin/git-branch-data
 
+cp git-branch-data.1 "${PREFIX}"/share/man/man1/git-branch-data.1
+gzip -f "${PREFIX}"/share/man/man1/git-branch-data.1
+
+echo 'Installation complete.'
+exit 0
